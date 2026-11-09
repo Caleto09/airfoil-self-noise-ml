@@ -1,0 +1,15 @@
+# Entornos virtuales
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# Datos y resultados (cada miembro los generará localmente)
+data/
+results/
+
+# Archivos de sistema de macOS
+.DS_Store
+
+# Configuración de VS Code
+.vscode/
