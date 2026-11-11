@@ -1,0 +1,103 @@
+%Version 3.1 December 2024
+% See section 11 of the User Manual for version history
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                  %%
+%% Please do not use \input{...} to include other tex files.       %%
+%% Submit your LaTeX manuscript as one .tex document.              %%
+%%                                                                  %%
+%% All additional figures and files should be attached             %%
+%% separately and not embedded in the \TeX\ document itself.       %%
+%%                                                                  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass[pdflatex,sn-mathphys-num]{sn-jnl}% Math and Physical Sciences Numbered Reference Style
+
+%%%% Standard Packages
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{amsthm}
+\usepackage{mathrsfs}
+\usepackage[title]{appendix}
+\usepackage{xcolor}
+\usepackage{textcomp}
+\usepackage{manyfoot}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algorithmicx}
+\usepackage{algpseudocode}
+\usepackage{listings}
+\usepackage{float}
+\usepackage{minted}
+\usemintedstyle{vs}
+
+\theoremstyle{thmstyleone}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+
+\theoremstyle{thmstyletwo}
+\newtheorem{example}{Example}
+\newtheorem{remark}{Remark}
+
+\theoremstyle{thmstylethree}
+\newtheorem{definition}{Definition}
+
+\algdef{SE}[DOWHILE]{Do}{doWhile}{\algorithmicdo}[1]{\algorithmicwhile\ #1}
+
+\raggedbottom
+
+\begin{document}
+
+\title[Regresión para predecir el ruido de perfiles aerodinámicos]{Regresión para predecir el ruido de perfiles aerodinámicos}
+
+\author[1]{\fnm{Adrián Gerardo} \sur{Ávila Chávez}}
+\author[2]{\fnm{Gustavo} \sur{González De la Cruz}}
+\author[3]{\fnm{Caleb de Jesús} \sur{Raya Mendoza}}
+\author[4]{\fnm{Mario Daniel} \sur{Toledo González}}
+
+\affil[1,2,3,4]{\orgdiv{División de Ingenierías}, \orgname{Universidad de Guanajuato}, \state{Guanajuato}, \country{México}}
+
+\abstract{Sintetizar el problema, objetivo, metodología, resultados principales y conclusión una vez que P5 termine el análisis estadístico.}
+
+\keywords{Airfoil Self-Noise, Machine Learning, Regresión, Acústica}
+
+\maketitle
+
+\section{Introducción}\label{sec1}
+
+Un perfil aerodinámico es aquella geometría que convierte la resistencia del aire en fuerza útil, comúnmente sustentación aerodinámica con el fin de volar. La interacción de estos perfiles con el aire produce un flujo turbulento y diferencias de presión audibles denominadas ruido auto generado.
+
+La media de estas fluctuaciones de presión en un tiempo finito se vuelve cero, ya que los términos positivos y negativos se cancelan, por lo que es necesario calcular la raíz de la media de los cuadrados (RMS) de las fluctuaciones para conocer de forma correcta el comportamiento central del ruido. Esta métrica se utiliza en el cálculo del Nivel de Presión Sonora (o SPL por su nombre en inglés), el cual representa la variable de interés para el presente proceso de regresión, de forma que:
+\begin{equation}
+SPL = 10 \cdot \log_{10}\left( \frac{p^2_{rms}}{p^2_{ref}} \right)=20\cdot \log_{10}\left(\frac{p_{rms}}{p_{ref}}\right)
+\end{equation}
+donde $p_{ref}$ funge como referencia del umbral audible para el ser humano.
+
+En el presente documento, se detalla el procedimiento llevado a cabo para elaborar modelos de aprendizaje automático que permitan estimar el valor de $SPL$ para un perfil alar en función de sus condiciones físicas y geométricas.
+
+\section{Metodología}\label{sec2}
+
+\subsection{Naturaleza y Descripción de los Datos}
+El conjunto de datos utilizado corresponde a pruebas aerodinámicas y acústicas de secciones de pala NACA 0012, obtenidas en un túnel de viento anecoico. Contiene 1,503 observaciones numéricas sin valores faltantes. Se consideran cinco variables predictoras: frecuencia (Hz), ángulo de ataque (grados), longitud de cuerda (m), velocidad del flujo libre (m/s) y el espesor de desplazamiento del lado de succión (m). La variable objetivo a estimar es el nivel de presión sonora escalado (SPL), expresado en decibeles (dB).
+
+El análisis exploratorio de datos (EDA) reveló una distribución no lineal en forma de campana en la relación entre la frecuencia y la presión sonora. Adicionalmente, el cálculo de los Factores de Inflación de Varianza (VIF) evidenció la existencia de multicolinealidad estructural entre los predictores físicos (como la dependencia entre la cuerda y el espesor), lo cual justifica el uso de estrategias de regularización en los algoritmos a evaluar.
+
+\subsection{Preparación y Transformaciones Físicas}
+Para abordar la disparidad de magnitudes en los predictores (e.g., espesores en el orden de milímetros frente a frecuencias en miles de Hertz) y su relación con la energía acústica, se diseñó un \textit{Pipeline} de preprocesamiento. A los predictores continuos estrictamente positivos (frecuencia, cuerda, velocidad y espesor) se les aplicó una transformación logarítmica en base 10. Posteriormente, todas las variables de entrada fueron estandarizadas de forma que tuvieran media cero y varianza unitaria. Para evitar la fuga de información, el algoritmo de estandarización calculó sus parámetros de ajuste exclusivamente utilizando el conjunto de datos de entrenamiento en cada iteración de la experimentación.
+
+\subsection{Diseño de Particiones y Prevención de Fuga de Datos}
+En la recolección original del túnel de viento, una misma configuración física (definida por la combinación exacta de longitud de cuerda, velocidad del flujo y ángulo de ataque) fue evaluada barriendo múltiples frecuencias. Realizar una división aleatoria simple provocaría que registros provenientes de la misma configuración aerodinámica quedaran repartidos simultáneamente entre los conjuntos de entrenamiento y prueba, inflando artificialmente el rendimiento predictivo.
+
+Para garantizar una comparación justa, se implementó un esquema de particiones agrupadas (\textit{GroupKFold}). Se generó un identificador único por configuración y se forzó al algoritmo a separar los pliegues basándose en este criterio, asegurando que los modelos sean evaluados ante dinámicas de flujo completamente inéditas.
+
+\section{Experimentación y Resultados}\label{sec3}
+% Esta sección será completada por P3, P4 y P5
+\subsection{Configuración de los algoritmos}
+
+\section{Conclusiones}\label{sec4}
+% Esta sección será redactada por P5 al finalizar las pruebas de hipótesis
+
+\bibliography{sn-bibliography}
+
+\end{document}

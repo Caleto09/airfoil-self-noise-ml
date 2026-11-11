@@ -1,0 +1,61 @@
+\documentclass[aspectratio=169]{beamer}
+\usetheme{Madrid}
+\usecolortheme{default}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+
+\title[Ruido en Perfiles Aerodinámicos]{Comparación experimental de algoritmos: \ Predicción de ruido en perfiles aerodinámicos}
+\author[Ávila, González, Raya, Toledo]{Adrián G. Ávila Chávez \and Gustavo González De la Cruz \and Caleb de Jesús Raya Mendoza \and Mario D. Toledo González}
+\institute[UGto]{Universidad de Guanajuato \ División de Ingenierías}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+\titlepage
+\end{frame}
+
+\section{Metodología y Datos}
+
+\begin{frame}{Análisis Exploratorio de Datos (EDA)}
+\begin{itemize}
+\item \textbf{Conjunto de datos:} 1,503 observaciones numéricas, obtenidas en túnel de viento anecoico (Perfil NACA 0012).
+\item \textbf{Predictores físicos (5):} Frecuencia, ángulo de ataque, longitud de cuerda, velocidad de flujo libre y espesor de desplazamiento.
+\item \textbf{Variable objetivo:} Nivel de presión sonora (SPL) en decibeles (dB).
+\vspace{0.3cm}
+\item \textbf{Hallazgos clave:}
+\begin{itemize}
+\item Relación claramente no lineal (forma de campana) entre frecuencia y SPL.
+\item Alta multicolinealidad detectada en el espesor mediante el Factor de Inflación de Varianza (VIF), justificando el uso de regularización.
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Preprocesamiento y Pipeline}
+\begin{block}{Transformaciones Físicamente Motivadas}
+Se aplicó una transformación logarítmica ($\log_{10}$) a las variables de magnitud amplia (frecuencia, cuerda, velocidad y espesor) para capturar las tendencias lineales subyacentes asociadas a la acústica.
+\end{block}
+
+\vspace{0.3cm}
+
+\begin{block}{Estandarización Aislada}
+    Se integró un \textit{StandardScaler} dentro del proceso. Sus parámetros estadísticos ($\mu$, $\sigma$) se calcularon \textbf{estrictamente sobre el conjunto de entrenamiento} en cada pliegue para evitar que información futura contaminara el modelo.
+\end{block}
+
+
+\end{frame}
+
+\begin{frame}{Esquema de Particionamiento (Prevención de Fuga de Información)}
+\textbf{Problema:} La validación cruzada aleatoria simple dividiría la misma configuración de túnel entre entrenamiento y prueba, provocando resultados inflados. \~\
+
+\textbf{Solución: Particiones Agrupadas}
+\begin{itemize}
+    \item Se construyó un identificador agrupando configuraciones únicas a partir de la triada \textit{cuerda + velocidad + ángulo}.
+    \item Se reemplazó el \textit{KFold} estándar por \textbf{GroupKFold}.
+    \item \textbf{Impacto:} El modelo se ve forzado a realizar estimaciones sobre configuraciones aerodinámicas que jamás observó durante su entrenamiento, reportando un error acústico realista.
+\end{itemize}
+
+
+\end{frame}
+
+\end{document}
