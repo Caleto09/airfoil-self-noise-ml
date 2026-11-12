@@ -14,15 +14,12 @@ import pandas as pd
 import scipy
 import sklearn
 
-from src.config import (
+from R0config import (
     ALL_DATASET_COLS,
     DATA_RAW_PATH,
-    FEATURE_COLS,
-    HIGH_NOISE_QUANTILE,
     METADATA_PATH,
     PREDICTIONS_DIR,
     REQUIRED_PREDICTION_COLS,
-    TARGET_COL,
     UCI_DATA_URL,
 )
 

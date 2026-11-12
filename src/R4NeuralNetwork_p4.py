@@ -28,7 +28,7 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
 
-from src.config import CONFIG_GROUP_COLS, FEATURE_COLS
+from R0config import CONFIG_GROUP_COLS, FEATURE_COLS
 
 # PARTICIONES AGRUPADAS
 def make_group_ids(df: pd.DataFrame) -> np.ndarray:
@@ -62,9 +62,9 @@ def grouped_kfold_splits(groups: np.ndarray, n_splits: int, seed: int) -> list:
     return splits
 
 
-# ==============================================================================
+
 # 2. PIPELINE DE LA MLP
-# ==============================================================================
+
 
 # Variables positivas de "escala" -> log10. Con SPL en decibeles (escala
 # logaritmica) las leyes de potencia (p. ej. SPL ~ 50*log10(velocidad))

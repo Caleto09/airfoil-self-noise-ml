@@ -4,11 +4,9 @@ Este archivo será importado por P1, P3 y P4.
 """
 import numpy as np
 import pandas as pd
-from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import GridSearchCV, GroupKFold
-from sklearn.preprocessing import FunctionTransformer, StandardScaler
 
-from src.config import CONFIG_GROUP_COLS
+from R0config import CONFIG_GROUP_COLS
 
 
 def assign_configuration_groups(df: pd.DataFrame) -> np.ndarray:
@@ -18,32 +16,6 @@ def assign_configuration_groups(df: pd.DataFrame) -> np.ndarray:
     (medidas a distintas frecuencias) no deben separarse entre train y test.
     """
     return df.groupby(CONFIG_GROUP_COLS).ngroup().to_numpy()
-
-def get_physical_preprocessor() -> ColumnTransformer:
-    """
-    Construye el pipeline de estandarización y transformaciones motivadas físicamente.
-    Aplica log10 a predictores con rangos amplios y dependencias relativas.
-    La estandarización aprende sus parámetros exclusivamente en train.
-    """
-    log_cols = ["frecuencia_hz", "longitud_cuerda_m", "velocidad_flujo_ms", "espesor_desplazamiento_m"]
-    pass_cols = ["angulo_ataque_deg"]
-
-    # Transformación logarítmica segura (evita log(0) clipando a 1e-9)
-    log_transformer = FunctionTransformer(
-        lambda x: np.log10(np.clip(x, 1e-9, None)),
-        feature_names_out="one-to-one"
-    )
-
-    phys_preprocessor = ColumnTransformer(
-        transformers=[
-            ("log_trans", log_transformer, log_cols),
-            ("pass", "passthrough", pass_cols),
-        ]
-    )
-
-    # Se encadena con StandardScaler para que todas las variables tengan media 0 y varianza 1
-    # Esto ayuda a mitigar la colinealidad detectada en el EDA.
-    return phys_preprocessor
 
 def run_nested_cv_search(
     pipeline, 

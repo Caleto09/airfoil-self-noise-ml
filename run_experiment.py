@@ -21,7 +21,7 @@ from sklearn.preprocessing import (
     PolynomialFeatures,
     StandardScaler,
 )
-from src.config import (
+from src.R0config import (
     CV_SEEDS,
     FEATURE_COLS,
     HIGH_NOISE_QUANTILE,
@@ -29,7 +29,7 @@ from src.config import (
     TABLES_DIR,
     TARGET_COL,
 )
-from src.io_utils import (
+from src.R0io_utils import (
     build_fold_predictions_df,
     load_or_download_airfoil_data,
     log_software_environment,
@@ -37,9 +37,9 @@ from src.io_utils import (
 )
 
 
-# ==============================================================================
+
 # 1. CÁLCULO DE MÉTRICAS
-# ==============================================================================
+
 def compute_fold_metrics(df_fold: pd.DataFrame) -> dict:
     """
     Calcula la métrica principal (RMSE en dB) y las complementarias
@@ -86,9 +86,9 @@ def compute_fold_metrics(df_fold: pd.DataFrame) -> dict:
     }
 
 
-# ==============================================================================
+
 # 2. DEFINICIÓN DE PIPELINES (Fase 0 / Reemplazable por módulos de P2, P3 y P4)
-# ==============================================================================
+
 def get_models_catalog(seed: int) -> dict:
     """
     Retorna los pipelines de cada familia asegurando que las transformaciones
@@ -127,9 +127,9 @@ def get_models_catalog(seed: int) -> dict:
     }
 
 
-# ==============================================================================
+
 # 3. EJECUCIÓN DEL DISEÑO EXPERIMENTAL
-# ==============================================================================
+
 def run_full_experiment():
     print("=" * 70)
     print("INICIANDO EJECUCIÓN REPRODUCIBLE - AIRFOIL SELF-NOISE (P1)")

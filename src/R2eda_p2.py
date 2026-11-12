@@ -1,7 +1,6 @@
 # %%
 """
 Análisis Exploratorio de Datos (EDA) - Responsabilidad P2.
-Ejecutar en VS Code Interactive Window.
 """
 import sys
 from pathlib import Path
@@ -14,8 +13,8 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 sys.path.append(str(Path.cwd().parent)) # Para importar src si estás en la carpeta notebooks
 
-from src.config import CONFIG_GROUP_COLS, FEATURE_COLS, TARGET_COL
-from src.io_utils import load_or_download_airfoil_data
+from R0config import CONFIG_GROUP_COLS, FEATURE_COLS, TARGET_COL
+from R0io_utils import load_or_download_airfoil_data
 
 # Configuración visual
 sns.set_theme(style="whitegrid")
