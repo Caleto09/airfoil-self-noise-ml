@@ -70,3 +70,4 @@ plt.title("Residuos del Modelo Lineal Simple vs Valor Real")
 plt.xlabel("SPL Real (dB)")
 plt.ylabel("Residuo (dB)")
 plt.show()
+

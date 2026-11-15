@@ -16,10 +16,10 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.metrics import mean_absolute_error, r2_score
+from sklearn.metrics import mean_absolute_error, r2_score, mean_squared_error
 
 # Columnas que devuelve compute_metrics (mismo orden en todas las tablas).
-METRIC_COLS = ["rmse_db", "mae_db", "r2", "pendiente"]
+METRIC_COLS = ["rmse_db", "mae_db", "r2", "pendiente", 'mse']
 
 # Columnas de identificación que se conservan al resumir predicciones por pliegue.
 _PREDICTION_ID_COLS = ["familia", "modelo", "repeticion", "pliegue"]
@@ -29,7 +29,7 @@ _PREDICTION_ID_COLS = ["familia", "modelo", "repeticion", "pliegue"]
 
 def compute_metrics(y_true, y_pred) -> dict[str, float]:
     """
-    Calcula RMSE, MAE, R² y la pendiente de calibración.
+    Calcula RMSE, MSE, MAE, R² y la pendiente de calibración.
 
     La pendiente de calibración es el coeficiente de la regresión lineal
     y_pred = a * y_true + b. Vale 1.0 si el modelo no tiene sesgo de escala;
@@ -42,7 +42,7 @@ def compute_metrics(y_true, y_pred) -> dict[str, float]:
         Valores reales y predichos, en dB, con la misma longitud.
 
     Retorna:
-    rmse_db, mae_db, r2 y pendiente.
+    rmse_db, mae_db, r2, pendiente y mse.
     """
     y_true = np.asarray(y_true, dtype=float)
     y_pred = np.asarray(y_pred, dtype=float)
@@ -70,6 +70,7 @@ def compute_metrics(y_true, y_pred) -> dict[str, float]:
         "rmse_db": float(np.sqrt(np.mean(error**2))),
         "mae_db": float(mean_absolute_error(y_true, y_pred)),
         "r2": float(r2_score(y_true, y_pred)),
+        'mse': float(mean_squared_error(y_true,y_pred)),
         "pendiente": pendiente,
     }
 

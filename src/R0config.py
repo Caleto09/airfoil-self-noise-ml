@@ -25,6 +25,7 @@ UCI_DATA_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/00291/
 MASTER_SEED = 42
 CV_SEEDS = [42, 100, 2026]  # Para validación cruzada repetida
 N_OUTER_SPLITS = 5          # Pliegues de evaluación externa
+N_INNER_SPLITS = 5          # Pliegues de CV interna (ajuste de hiperparámetros)
 
 # Cuantil superior para evaluar condiciones de mayor emisión sonora (top 10% más ruidoso)
 HIGH_NOISE_QUANTILE = 0.90
@@ -76,6 +77,7 @@ COMPLEMENTARY_METRICS = [
     "mae_db",
     "r2",
     "sesgo_db",
-    "pendiente"
+    "pendiente",
+    'mse'
 ]
 

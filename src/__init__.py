@@ -1,11 +1,9 @@
-# %%
-# src/__init__.py
 """
 Punto de entrada del proyecto Airfoil Self-Noise.
 
 Reúne las implementaciones existentes de los módulos del proyecto:
     - Random Forest: R3RandomForest_p3.TunedRandomForest
-    - MLP:           R4NeuralNetwork_p4.build_mlp_model / build_mlp_search
+    - MLP:           R4NeuralNetwork_p4.build_mlp_search 
     - Métricas:      R5Metrics_p5.compute_metrics / compute_metrics_by_fold
     - Figuras:       R5Metrics_p5.plot_rmse_by_model / plot_pred_vs_real
 
@@ -19,12 +17,15 @@ import time
 import numpy as np
 import pandas as pd
 
+from sklearn.preprocessing import StandardScaler, QuantileTransformer, MaxAbsScaler
+
 from R0config import (
     CV_SEEDS,
     FEATURE_COLS,
     FIGURES_DIR,
     HIGH_NOISE_QUANTILE,
     MASTER_SEED,
+    N_INNER_SPLITS,
     N_OUTER_SPLITS,
     TABLES_DIR,
     TARGET_COL,
@@ -52,16 +53,28 @@ from R5Metrics_p5 import (
 MODEL_NAMES = ("RandomForest", "MLP")
 
 
-def build_model(name: str, seed: int = MASTER_SEED):
+def build_model(name: str, seed: int = MASTER_SEED, inner_cv=None):
+    """
+    Crea una instancia nueva del modelo ya implementado en el proyecto.
+
+    El MLP se construye con `build_mlp_search`, que busca hiperparámetros
+    con la CV interna `inner_cv`y reentrena la mejor combinación.
+    """
     if name == "RandomForest":
         return TunedRandomForest(random_state=seed)
     if name == "MLP":
-        return build_mlp_model(seed)
+        if inner_cv is None:
+            raise ValueError(
+                "El MLP se ajusta con build_mlp_search y requiere inner_cv "
+                "(particiones agrupadas dentro del train)."
+            )
+        return build_mlp_search(seed, inner_cv)
     raise ValueError(f"Modelo desconocido: {name!r}. Opciones válidas: {list(MODEL_NAMES)}.")
 
 
-def build_models(seed: int = MASTER_SEED) -> dict:
-    return {name: build_model(name, seed) for name in MODEL_NAMES}
+def build_models(seed: int = MASTER_SEED, inner_cv=None) -> dict:
+    """Crea una instancia nueva de cada modelo del proyecto."""
+    return {name: build_model(name, seed, inner_cv) for name in MODEL_NAMES}
 
 
 def main(seed: int = MASTER_SEED) -> pd.DataFrame:
@@ -69,8 +82,9 @@ def main(seed: int = MASTER_SEED) -> pd.DataFrame:
     - Carga el dataset.
     - Separa train/test con una partición agrupada por configuración física
       (evita fuga de información entre frecuencias de una misma configuración).
-    - Ajusta Random Forest y MLP.
-    - Calcula RMSE, MAE, R² y pendiente de calibración.
+    - Ajusta Random Forest (búsqueda interna de hiperparámetros) y MLP
+      (búsqueda aleatoria con CV interna).
+    - Calcula RMSE, MAE, R² , MSE y pendiente de calibración.
     - Guarda predicciones, tabla de métricas y figuras en results/.
     """
     print("AIRFOIL SELF-NOISE | Modelos + metricas (P5)")
@@ -93,7 +107,12 @@ def main(seed: int = MASTER_SEED) -> pd.DataFrame:
     q90_threshold = float(np.quantile(y, HIGH_NOISE_QUANTILE))
     print(f"Umbral P90: {q90_threshold:.2f} dB")
 
-    modelos = build_models(seed=seed)
+    # CV interna para el MLP: pliegues agrupados DENTRO del train, en índices
+    # posicionales relativos a X_train (así los usa RandomizedSearchCV).
+    inner_cv = grouped_kfold_splits(groups[train_idx], N_INNER_SPLITS, seed)
+    print(f"CV interna del MLP: {len(inner_cv)} pliegues agrupados")
+
+    modelos = build_models(seed=seed, inner_cv=inner_cv)
     predicciones = []
 
     for nombre, modelo in modelos.items():
@@ -103,6 +122,8 @@ def main(seed: int = MASTER_SEED) -> pd.DataFrame:
         elapsed = time.perf_counter() - t0
         y_pred = modelo.predict(X_test)
         print(f"{nombre} ajustado en {elapsed:.1f} s")
+        if getattr(modelo, "best_params_", None) is not None:
+            print(f"  Mejores hiperparámetros: {modelo.best_params_}")
 
         predicciones.append(build_fold_predictions_df(
             familia="no_lineal",
@@ -120,7 +141,7 @@ def main(seed: int = MASTER_SEED) -> pd.DataFrame:
     df_preds = pd.concat(predicciones, ignore_index=True)
     df_metricas = compute_metrics_by_fold(df_preds)
 
-    columnas = ["modelo", "rmse_db", "mae_db", "r2", "pendiente"]
+    columnas = ["modelo", "rmse_db", "mae_db", "r2", "pendiente",'mse']
     print("METRICAS EN EL CONJUNTO DE PRUEBA")
     print(df_metricas[columnas].round(4).to_string(index=False))
 
