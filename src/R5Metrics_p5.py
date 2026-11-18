@@ -221,6 +221,20 @@ def plot_rmse_by_model(
     return _save_figure(fig, save_path, show)
 
 
+def calibracion_op(y_true: np.ndarray, y_pred: np.ndarray) -> tuple[float, float]:
+    """Ajuste de calibración real = a + b * predicho (observado sobre predicho).
+ 
+    Devuelve (pendiente, intercepto). Es la dirección recomendada por
+    Piñeiro et al. (2008); b = 1 y a = 0 indican calibración perfecta.
+    Usa esta misma función dentro de compute_metrics para que la tabla del
+    reporte y la gráfica den el mismo número.
+    """
+    if np.var(y_pred) == 0:
+        return float("nan"), float("nan")
+    b, a = np.polyfit(y_pred, y_true, 1)
+    return float(b), float(a)
+ 
+ 
 def plot_pred_vs_real(
     df_preds: pd.DataFrame,
     modelo: str | None = None,
@@ -229,15 +243,15 @@ def plot_pred_vs_real(
     show: bool = False,
 ):
     """
-    Grafica los valores predichos contra los reales para un modelo.
-
-    Incluye la recta ideal 1:1, el ajuste de calibración y un cuadro con RMSE,
-    MAE, R² y pendiente de calibración.
+    Gráfico de calibración: SPL real (eje y) contra SPL predicho (eje x).
+ 
+    Incluye la recta ideal 1:1, el ajuste real = a + b * predicho y un cuadro
+    con RMSE, MAE, R², pendiente e intercepto de calibración.
     """
     faltantes = {"y_true_db", "y_pred_db"} - set(df_preds.columns)
     if faltantes:
         raise ValueError(f"Faltan columnas de predicciones: {sorted(faltantes)}")
-
+ 
     if modelo is not None:
         if "modelo" not in df_preds.columns:
             raise ValueError("No se puede filtrar por 'modelo': la columna no existe.")
@@ -253,19 +267,25 @@ def plot_pred_vs_real(
                 f"Disponibles: {disponibles}."
             )
         df = df_preds
-
+ 
     y_true = df["y_true_db"].to_numpy(dtype=float)
     y_pred = df["y_pred_db"].to_numpy(dtype=float)
+    ok = np.isfinite(y_true) & np.isfinite(y_pred)
+    y_true, y_pred = y_true[ok], y_pred[ok]
+ 
     metricas = compute_metrics(y_true, y_pred)
-
+    # Pendiente e intercepto del MISMO ajuste (real sobre predicho)
+    pendiente, intercepto = calibracion_op(y_true, y_pred)
+ 
     if ax is None:
         fig, ax = plt.subplots(figsize=(6.5, 5.5), constrained_layout=True)
     else:
         fig = ax.figure
-
+ 
+    # x = predicho, y = real
     ax.scatter(
-        y_true,
         y_pred,
+        y_true,
         s=14,
         alpha=0.35,
         edgecolors="none",
@@ -273,42 +293,44 @@ def plot_pred_vs_real(
         zorder=2,
         label="Observaciones",
     )
-
+ 
     minimo = min(y_true.min(), y_pred.min())
     maximo = max(y_true.max(), y_pred.max())
     margen = 0.03 * (maximo - minimo) if maximo > minimo else 1.0
     limite = (minimo - margen, maximo + margen)
-
-    ax.plot(limite, limite, "--", color="black", linewidth=1.2, label="Ideal (1:1)")
-
-    pendiente = metricas["pendiente"]
+    xs = np.asarray(limite)
+ 
+    ax.plot(xs, xs, "--", color="black", linewidth=1.2, label="Ideal (b = 1, a = 0)")
+ 
     if np.isfinite(pendiente):
-        intercepto = float(y_pred.mean() - pendiente * y_true.mean())
         ax.plot(
-            np.asarray(limite),
-            pendiente * np.asarray(limite) + intercepto,
+            xs,
+            intercepto + pendiente * xs,
             ":",
             color="#C44E52",
             linewidth=1.5,
             label=f"Ajuste (pendiente = {pendiente:.3f})",
         )
-
+ 
     ax.set_xlim(limite)
     ax.set_ylim(limite)
     ax.set_aspect("equal", adjustable="box")
-    ax.set_xlabel("SPL real [dB]")
-    ax.set_ylabel("SPL predicho [dB]")
+    ax.set_xlabel("SPL predicho [dB]")
+    ax.set_ylabel("SPL real [dB]")
     ax.set_title(
-        f"Predicho vs real — {modelo}" if modelo is not None else "Predicho vs real"
+        f"Calibración (real vs predicho) — {modelo}"
+        if modelo is not None
+        else "Calibración (real vs predicho)"
     )
     ax.grid(linestyle=":", alpha=0.6)
     ax.set_axisbelow(True)
-
+ 
     texto = (
         f"RMSE = {metricas['rmse_db']:.3f} dB\n"
         f"MAE = {metricas['mae_db']:.3f} dB\n"
         f"R² = {metricas['r2']:.4f}\n"
-        f"Pendiente = {metricas['pendiente']:.3f}\n"
+        f"Pendiente = {pendiente:.3f}\n"
+        f"Intercepto = {intercepto:.2f} dB\n"
         f"n = {len(y_true)}"
     )
     ax.text(
@@ -322,9 +344,8 @@ def plot_pred_vs_real(
         bbox={"boxstyle": "round", "facecolor": "white", "edgecolor": "0.7", "alpha": 0.9},
     )
     ax.legend(frameon=False, loc="lower right")
-
+ 
     return _save_figure(fig, save_path, show)
-
 
 def _save_figure(fig, save_path: str | Path | None, show: bool):
     """Guarda y/o muestra la figura; siempre devuelve el objeto Figure."""
